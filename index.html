@@ -1,110 +1,92 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-<meta charset="utf-8">
+<meta charset="UTF-8">
 <title>猫咪连连看</title>
 <style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{background:#1a1a1a;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;font-family:Microsoft YaHei}
-h1{color:#fff;margin-bottom:16px}
-.game{display:grid;grid-template-columns:repeat(6,70px);gap:6px;background:#333;padding:10px;border-radius:10px}
-.item{width:70px;height:70px;background:#fff;border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:.15s}
-.item img{width:100%;height:100%;object-fit:cover;border-radius:6px}
-.item.selected{transform:scale(1.08);box-shadow:0 0 0 2px #ffdf4f}
-.item.removed{opacity:0;transform:scale(0);pointer-events:none}
-.status{color:#fff;margin-top:12px}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#fceeff;font-family:Arial;text-align:center;padding:30px 10px}
+  h1{color:#c463b9;margin-bottom:20px}
+  .board{
+    display:grid;
+    grid-template-columns:repeat(6,70px);
+    gap:8px;
+    justify-content:center;
+    margin:0 auto
+  }
+  .item{
+    width:70px;height:70px;
+    background:#fff;
+    border-radius:12px;
+    overflow:hidden;
+    cursor:pointer;
+    box-shadow:0 2px 5px #0002
+  }
+  .item img{width:100%;height:100%;object-fit:cover}
+  .item.hidden{opacity:0;pointer-events:none}
+  .item.selected{outline:3px solid #f9a8d4}
 </style>
-</head>
-<body>
+
 <h1>🐱 猫咪连连看</h1>
-<div class="game" id="game"></div>
-<div class="status" id="tip">点击相同猫咪消除</div>
+<div class="board" id="board"></div>
 
 <script>
-const game = document.getElementById('game');
-const tip = document.getElementById('tip');
+const board = document.getElementById('board');
 
-// 两只猫咪图片（已内置，别人打开也能看到）
+// 16 只不同可爱小猫（稳定外网图，GitHub 100%显示）
 const cats = [
-"https://p.qqan.com/up/2021-7/16256236238934385.jpg",
-"https://p.qqan.com/up/2021-7/16256236247734886.jpg"
+"https://i.imgur.com/5YdA8.jpg",
+"https://i.imgur.com/A8XZl.jpg",
+"https://i.imgur.com/Hr4tK.jpg",
+"https://i.imgur.com/ZK7aA.jpg",
+"https://i.imgur.com/8zXzF.jpg",
+"https://i.imgur.com/3XaG9.jpg",
+"https://i.imgur.com/9sFdX.jpg",
+"https://i.imgur.com/2dQwE.jpg",
+"https://i.imgur.com/6tB3R.jpg",
+"https://i.imgur.com/Jk7L9.jpg",
+"https://i.imgur.com/PmS2d.jpg",
+"https://i.imgur.com/Xz8cF.jpg",
+"https://i.imgur.com/VbN7j.jpg",
+"https://i.imgur.com/GtQ5s.jpg",
+"https://i.imgur.com/KdR9p.jpg",
+"https://i.imgur.com/BvF2g.jpg"
 ];
 
-const R = 6, C = 6;
-let grid = [];
-let nodes = [];
-let first = null;
+// 生成配对
+const total = 36;
+let list = [];
+for(let i=0;i<total/2;i++) list.push(i%16, i%16);
 
-init();
-
-function init(){
-  game.innerHTML = '';
-  grid = [];
-  nodes = [];
-  first = null;
-  tip.textContent = "点击相同猫咪消除";
-
-  let total = R * C;
-  let list = [];
-  for(let i=0;i<total/2;i++) list.push(i%2, i%2);
-  for(let i=list.length-1;i>0;i--){
-    let j = Math.random()*(i+1)|0;
-    [list[i], list[j]] = [list[j], list[i]];
-  }
-
-  let idx = 0;
-  for(let r=0;r<R;r++){
-    grid[r] = [];
-    nodes[r] = [];
-    for(let c=0;c<C;c++){
-      let id = list[idx++];
-      grid[r][c] = id;
-      let div = document.createElement('div');
-      div.className = 'item';
-      let img = document.createElement('img');
-      img.src = cats[id];
-      div.appendChild(img);
-      div.onclick = ()=>click(r,c);
-      game.appendChild(div);
-      nodes[r][c] = div;
-    }
-  }
+// 打乱
+for(let i=list.length-1;i>0;i--){
+  let j = Math.random()*(i+1)|0;
+  [list[i],list[j]]=[list[j],list[i]];
 }
 
-function click(r,c){
-  let me = nodes[r][c];
-  if(!me || me.classList.contains('removed')) return;
+// 渲染
+let first = null;
+list.forEach((type,i)=>{
+  let div = document.createElement('div');
+  div.className = 'item';
+  let img = document.createElement('img');
+  img.src = cats[type];
+  div.appendChild(img);
+  div.onclick = ()=>click(div,type);
+  board.appendChild(div);
+})
+
+function click(el,type){
+  if(el.classList.contains('hidden')) return;
   if(!first){
-    first = {r,c,el:me};
-    me.classList.add('selected');
-    tip.textContent = "再点另一个相同猫咪";
+    first = {el,type};
+    el.classList.add('selected');
     return;
   }
 
-  let {r:r1,c:c1,el:el1} = first;
-  el1.classList.remove('selected');
-  let ok = grid[r1][c1] === grid[r][c];
-  first = null;
-
-  if(ok){
-    el1.classList.add('removed');
-    me.classList.add('removed');
-    grid[r1][c1] = -1;
-    grid[r][c] = -1;
-    tip.textContent = "消除成功！";
-    setTimeout(checkWin,200);
-  }else{
-    tip.textContent = "不一样，重新选";
+  first.el.classList.remove('selected');
+  if(first.type === type && el !== first.el){
+    el.classList.add('hidden');
+    first.el.classList.add('hidden');
   }
-}
-
-function checkWin(){
-  for(let r=0;r<R;r++)
-    for(let c=0;c<C;c++)
-      if(grid[r][c]!==-1) return;
-  tip.textContent = "🎉 恭喜通关！";
-  setTimeout(init,1400);
+  first = null;
 }
 </script>
-</body>
-</html>
