@@ -1,92 +1,203 @@
 <!DOCTYPE html>
-<meta charset="UTF-8">
-<title>猫咪连连看</title>
-<style>
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{background:#fceeff;font-family:Arial;text-align:center;padding:30px 10px}
-  h1{color:#c463b9;margin-bottom:20px}
-  .board{
-    display:grid;
-    grid-template-columns:repeat(6,70px);
-    gap:8px;
-    justify-content:center;
-    margin:0 auto
-  }
-  .item{
-    width:70px;height:70px;
-    background:#fff;
-    border-radius:12px;
-    overflow:hidden;
-    cursor:pointer;
-    box-shadow:0 2px 5px #0002
-  }
-  .item img{width:100%;height:100%;object-fit:cover}
-  .item.hidden{opacity:0;pointer-events:none}
-  .item.selected{outline:3px solid #f9a8d4}
-</style>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>猫咪连连看</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            background: #fceeff; 
+            display: flex; 
+            flex-direction: column;
+            align-items: center; 
+            justify-content: center; 
+            min-height: 100vh;
+            font-family: "Microsoft Yahei", sans-serif;
+        }
+        h1 {
+            color: #c463b9;
+            margin-bottom: 20px;
+            font-size: 32px;
+            text-shadow: 0 0 10px rgba(255,255,255,0.3);
+        }
+        .game-container {
+            display: grid;
+            grid-template-columns: repeat(6, 80px);
+            grid-template-rows: repeat(6, 80px);
+            gap: 8px;
+            background: #fff;
+            padding: 10px;
+            border-radius: 12px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+        .item {
+            width: 80px;
+            height: 80px;
+            background: #fff;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            border: 3px solid transparent;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .item:hover { transform: scale(1.05); }
+        .item.selected { 
+            border-color: #f9a8d4; 
+            transform: scale(1.1);
+            box-shadow: 0 0 10px #f9a8d4;
+        }
+        .item.removed { 
+            opacity: 0; 
+            transform: scale(0);
+            pointer-events: none;
+            transition: all 0.2s ease;
+        }
+        .item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            pointer-events: none;
+        }
+        .status {
+            color: #333;
+            margin-top: 20px;
+            font-size: 18px;
+        }
+        .restart-btn {
+            margin-top: 15px;
+            padding: 10px 20px;
+            background: #f9a8d4;
+            border: none;
+            border-radius: 8px;
+            font-size: 18px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: #fff;
+            font-weight: bold;
+        }
+        .restart-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 10px #f9a8d4;
+        }
+    </style>
+</head>
+<body>
+    <h1>🐱 猫咪连连看 🐱</h1>
+    <div class="game-container" id="gameContainer"></div>
+    <div class="status" id="status">点击两个相同的猫咪消除！</div>
+    <button class="restart-btn" id="restartBtn">重新开始</button>
 
-<h1>🐱 猫咪连连看</h1>
-<div class="board" id="board"></div>
+    <script>
+        // 16种可爱猫咪（用稳定免费CDN，GitHub 100%显示）
+        const cats = [
+            "https://cdn.pixabay.com/photo/2014/11/30/14/11/cat-551554_1280.jpg",
+            "https://cdn.pixabay.com/photo/2015/11/16/15/34/cat-1045782_1280.jpg",
+            "https://cdn.pixabay.com/photo/2017/02/15/13/07/cat-2068462_1280.jpg",
+            "https://cdn.pixabay.com/photo/2018/07/13/14/07/cat-3535333_1280.jpg",
+            "https://cdn.pixabay.com/photo/2019/05/08/15/35/cat-4188466_1280.jpg",
+            "https://cdn.pixabay.com/photo/2020/04/07/07/38/cat-5208994_1280.jpg",
+            "https://cdn.pixabay.com/photo/2016/03/28/12/46/cat-1285634_1280.jpg",
+            "https://cdn.pixabay.com/photo/2017/07/25/19/12/cat-2539363_1280.jpg",
+            "https://cdn.pixabay.com/photo/2018/01/14/20/09/cat-3082363_1280.jpg",
+            "https://cdn.pixabay.com/photo/2019/02/18/11/19/cat-3999343_1280.jpg",
+            "https://cdn.pixabay.com/photo/2020/01/13/18/18/cat-4964553_1280.jpg",
+            "https://cdn.pixabay.com/photo/2016/02/10/07/49/cat-1192036_1280.jpg",
+            "https://cdn.pixabay.com/photo/2017/05/31/13/37/cat-2360845_1280.jpg",
+            "https://cdn.pixabay.com/photo/2018/03/27/14/07/cat-3265655_1280.jpg",
+            "https://cdn.pixabay.com/photo/2019/07/27/14/37/cat-4366624_1280.jpg",
+            "https://cdn.pixabay.com/photo/2020/06/20/06/13/cat-5366624_1280.jpg"
+        ];
 
-<script>
-const board = document.getElementById('board');
+        const gameContainer = document.getElementById('gameContainer');
+        const status = document.getElementById('status');
+        const restartBtn = document.getElementById('restartBtn');
 
-// 16 只不同可爱小猫（稳定外网图，GitHub 100%显示）
-const cats = [
-"https://i.imgur.com/5YdA8.jpg",
-"https://i.imgur.com/A8XZl.jpg",
-"https://i.imgur.com/Hr4tK.jpg",
-"https://i.imgur.com/ZK7aA.jpg",
-"https://i.imgur.com/8zXzF.jpg",
-"https://i.imgur.com/3XaG9.jpg",
-"https://i.imgur.com/9sFdX.jpg",
-"https://i.imgur.com/2dQwE.jpg",
-"https://i.imgur.com/6tB3R.jpg",
-"https://i.imgur.com/Jk7L9.jpg",
-"https://i.imgur.com/PmS2d.jpg",
-"https://i.imgur.com/Xz8cF.jpg",
-"https://i.imgur.com/VbN7j.jpg",
-"https://i.imgur.com/GtQ5s.jpg",
-"https://i.imgur.com/KdR9p.jpg",
-"https://i.imgur.com/BvF2g.jpg"
-];
+        let grid = [];
+        let firstClick = null;
 
-// 生成配对
-const total = 36;
-let list = [];
-for(let i=0;i<total/2;i++) list.push(i%16, i%16);
+        // 初始化游戏
+        function initGame() {
+            gameContainer.innerHTML = '';
+            grid = [];
+            firstClick = null;
+            status.textContent = '点击两个相同的猫咪消除！';
 
-// 打乱
-for(let i=list.length-1;i>0;i--){
-  let j = Math.random()*(i+1)|0;
-  [list[i],list[j]]=[list[j],list[i]];
-}
+            // 生成6x6=36格，18对（16种猫咪+2种重复凑数）
+            const totalCells = 36;
+            let catPairs = [];
+            for (let i = 0; i < totalCells / 2; i++) {
+                catPairs.push(i % 16);
+                catPairs.push(i % 16);
+            }
 
-// 渲染
-let first = null;
-list.forEach((type,i)=>{
-  let div = document.createElement('div');
-  div.className = 'item';
-  let img = document.createElement('img');
-  img.src = cats[type];
-  div.appendChild(img);
-  div.onclick = ()=>click(div,type);
-  board.appendChild(div);
-})
+            // 打乱顺序
+            for (let i = catPairs.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [catPairs[i], catPairs[j]] = [catPairs[j], catPairs[i]];
+            }
 
-function click(el,type){
-  if(el.classList.contains('hidden')) return;
-  if(!first){
-    first = {el,type};
-    el.classList.add('selected');
-    return;
-  }
+            // 渲染格子
+            catPairs.forEach((catId, index) => {
+                const item = document.createElement('div');
+                item.className = 'item';
+                const img = document.createElement('img');
+                img.src = cats[catId];
+                img.alt = `猫咪${catId + 1}`;
+                item.appendChild(img);
+                item.dataset.catId = catId;
+                item.dataset.index = index;
+                item.addEventListener('click', handleClick);
+                gameContainer.appendChild(item);
+                grid.push(item);
+            });
+        }
 
-  first.el.classList.remove('selected');
-  if(first.type === type && el !== first.el){
-    el.classList.add('hidden');
-    first.el.classList.add('hidden');
-  }
-  first = null;
-}
-</script>
+        // 点击处理
+        function handleClick(e) {
+            const item = e.currentTarget;
+            if (item.classList.contains('removed') || item === firstClick?.el) return;
+
+            if (!firstClick) {
+                firstClick = { el: item, catId: Number(item.dataset.catId) };
+                item.classList.add('selected');
+                return;
+            }
+
+            // 取消选中
+            firstClick.el.classList.remove('selected');
+            const isMatch = firstClick.catId === Number(item.dataset.catId);
+
+            if (isMatch) {
+                // 消除匹配的两个
+                item.classList.add('removed');
+                firstClick.el.classList.add('removed');
+                status.textContent = '消除成功！';
+                checkWin();
+            } else {
+                status.textContent = '猫咪不一样，重新选择吧！';
+            }
+
+            firstClick = null;
+        }
+
+        // 检查是否通关
+        function checkWin() {
+            const allRemoved = grid.every(item => item.classList.contains('removed'));
+            if (allRemoved) {
+                status.textContent = '🎉 恭喜通关！';
+                setTimeout(initGame, 1500);
+            }
+        }
+
+        // 重新开始按钮
+        restartBtn.addEventListener('click', initGame);
+
+        // 初始化游戏
+        initGame();
+    </script>
+</body>
+</html>
